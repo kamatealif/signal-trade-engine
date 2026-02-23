@@ -1,7 +1,10 @@
 [project]
 name = "signal-trade-engine"
 version = "0.1.0"
-description = "Add your description here"
+description = "Binance Futures Testnet trading bot assignment"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = []
+
+[project.scripts]
+trading-bot = "bot.cli:main"
