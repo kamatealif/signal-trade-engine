@@ -579,12 +579,14 @@ source = { virtual = "." }
 dependencies = [
     { name = "dotenv" },
     { name = "python-binance" },
+    { name = "requests" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "dotenv", specifier = ">=0.9.9" },
     { name = "python-binance", specifier = ">=1.0.19" },
+    { name = "requests", specifier = ">=2.32.5" },
 ]
 
 [[package]]

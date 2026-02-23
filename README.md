@@ -1,140 +1,112 @@
-# Binance Futures Testnet Trading Bot (Assignment)
+# Binance Futures Testnet Trading Bot
 
-Python CLI app to place `MARKET` and `LIMIT` orders on Binance Futures Testnet (USDT-M), with input validation, structured modules, logging, and error handling.
-The API layer uses the `python-binance` package.
+Python CLI app for Binance USDT-M Futures Testnet.  
+It supports placing `MARKET` and `LIMIT` orders and includes a continuous price watch mode.
 
-## Features
-
-- Place orders on Binance Futures Testnet (`https://testnet.binancefuture.com`)
-- Supports both sides: `BUY`, `SELL`
-- Supports order types: `MARKET`, `LIMIT`
-- Validates CLI inputs (`symbol`, `side`, `order type`, `quantity`, `price`)
-- Logs API requests/responses/errors to file
-- Clear CLI output: request summary + response details + success/failure
-
-## Project Structure
-
-```text
-.
-├── bot/
-│   ├── cli.py              # CLI layer
-│   ├── client.py           # Binance API client wrapper
-│   ├── errors.py           # custom exceptions
-│   ├── logging_config.py   # file logging setup
-│   ├── orders.py           # order request model and logic
-│   └── validators.py       # input validation helpers
-├── logs/                   # log files are generated here
-└── main.py                 # app entrypoint
-```
-
-## Prerequisites
+## What This Project Uses
 
 - Python `3.13+`
-- Binance Futures Testnet account + API credentials
+- `python-binance` for Futures order API calls
+- `requests` for watch-mode price polling (`/fapi/v1/ticker/price`)
+- `python-dotenv` for loading API credentials from `.env`
+- `uv` for dependency and environment management
 
-## Setup
+## Technologies Used
+
+- Python (CLI application)
+- Binance Futures Testnet API (USDT-M)
+- `python-binance` (order placement/auth wrapper)
+- `requests` (price polling in watch mode)
+- `python-dotenv` (environment variable loading)
+- `argparse` (CLI argument parsing)
+- `logging` (file + console logs)
+- `uv` (dependency and virtual environment management)
+
+## Local Setup
+
+1. Install dependencies:
 
 ```bash
 uv sync
 ```
 
-Set credentials:
+2. Create `.env` in project root:
 
 ```bash
 cat > .env <<'EOF'
-API_KEY=your_testnet_api_key
-SECRET_KEY=your_testnet_api_secret
+BINANCE_API_KEY=your_testnet_api_key
+BINANCE_API_SECRET=your_testnet_api_secret
 EOF
 ```
 
-## Usage
+## How To Run
 
-### MARKET order example
+Run commands with:
 
 ```bash
-uv run python main.py \
-  --symbol BTCUSDT \
-  --side BUY \
-  --order-type MARKET \
-  --quantity 0.001
+uv run python main.py ...
 ```
 
-### LIMIT order example
+### MARKET order
 
 ```bash
 uv run python main.py \
   --symbol BTCUSDT \
-  --side SELL \
-  --order-type LIMIT \
   --quantity 0.001 \
+  --side BUY \
+  --type MARKET
+```
+
+### LIMIT order
+
+```bash
+uv run python main.py \
+  --symbol BTCUSDT \
+  --quantity 0.001 \
+  --side SELL \
+  --type LIMIT \
   --price 120000
 ```
 
-## CLI Options
-
-```text
---symbol       required, e.g. BTCUSDT
---side         required, BUY or SELL
---order-type   required, MARKET or LIMIT
---quantity     required, > 0
---price        required only for LIMIT
---api-key      optional (fallback: API_KEY from .env)
---api-secret   optional (fallback: SECRET_KEY from .env)
---base-url     optional (default: https://testnet.binancefuture.com)
---log-file     optional (default: logs/trading_bot.log)
---timeout      optional (default: 15 seconds)
---recv-window  optional (default: 5000 ms)
-```
-
-## Output
-
-The program prints:
-
-- Order request summary
-- Order response details:
-  - `orderId`
-  - `status`
-  - `executedQty`
-  - `avgPrice` (or derived when possible)
-- Final success/failure message
-
-## Logs
-
-Logs are written to:
-
-```text
-logs/trading_bot.log
-```
-
-Logged events include:
-
-- API request metadata
-- API response payloads
-- Validation/API/network errors
-
-To generate separate deliverable logs:
+### Watch mode
 
 ```bash
-# Market log
-uv run python main.py ... --order-type MARKET --log-file logs/market_order.log
-
-# Limit log
-uv run python main.py ... --order-type LIMIT --price 120000 --log-file logs/limit_order.log
-```
-
-## Assumptions
-
-- This bot targets Binance USDT-M Futures Testnet only.
-- Quantity/price precision and symbol filters are ultimately enforced by Binance.
-- For `LIMIT` orders, `timeInForce=GTC` is used.
-
-To run use this :
-
-```bash
-python -m bot.cli \
+uv run python main.py \
   --symbol BTCUSDT \
   --quantity 0.001 \
   --watch \
   --buy-below 65000 \
   --sell-above 67000
 ```
+
+Stop watch mode with `Ctrl + C`.
+
+## CLI Arguments
+
+```text
+--symbol       required (example: BTCUSDT)
+--quantity     required, must be > 0
+
+--side         required in order mode: BUY or SELL
+--type         required in order mode: MARKET or LIMIT
+--price        required for LIMIT orders
+
+--watch        enable watch mode
+--buy-below    required in watch mode
+--sell-above   required in watch mode
+```
+
+## What Each Project File Does
+
+- `main.py`: app entrypoint, calls CLI runner
+- `bot/cli.py`: parses CLI args, routes to order mode or watch mode
+- `bot/client.py`: initializes Binance Futures client and sends orders
+- `bot/orders.py`: builds order payloads for MARKET/LIMIT
+- `bot/validators.py`: validates symbol, side, type, quantity, and price
+- `bot/price_watcher.py`: polls latest price and triggers BUY/SELL by thresholds
+- `bot/logging_config.py`: sets logging to console and `logs/trading_bot.log`
+- `pyproject.toml`: project metadata and dependencies
+
+## Logs
+
+- Log file path: `logs/trading_bot.log`

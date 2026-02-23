@@ -1,7 +1,24 @@
 import time
 import logging
+import requests
 
 logger = logging.getLogger(__name__)
+
+BASE_URL = "https://testnet.binancefuture.com"
+
+
+def fetch_price(symbol: str) -> float:
+    url = f"{BASE_URL}/fapi/v1/ticker/price"
+    resp = requests.get(url, params={"symbol": symbol}, timeout=5)
+
+    resp.raise_for_status()
+    data = resp.json()
+
+    if "price" not in data:
+        raise RuntimeError(f"Invalid price response: {data}")
+
+    return float(data["price"])
+
 
 def watch_price(
     client,
@@ -9,7 +26,7 @@ def watch_price(
     buy_below,
     sell_above,
     quantity,
-    poll_interval=3
+    poll_interval=3,
 ):
     last_price = None
     position = None  # None or "LONG"
@@ -18,8 +35,7 @@ def watch_price(
 
     while True:
         try:
-            ticker = client.client.futures_symbol_ticker(symbol=symbol)
-            price = float(ticker["price"])
+            price = fetch_price(symbol)
 
             if last_price is None:
                 movement = "→ START"
@@ -39,7 +55,7 @@ def watch_price(
                 f"price={price}, movement={movement}, position={position}"
             )
 
-            # BUY LOGIC
+            # BUY
             if price <= buy_below and position is None:
                 logger.info("BUY condition met")
                 client.place_order(
@@ -51,7 +67,7 @@ def watch_price(
                 position = "LONG"
                 logger.info("BUY executed")
 
-            # SELL LOGIC
+            # SELL
             elif price >= sell_above and position == "LONG":
                 logger.info("SELL condition met")
                 client.place_order(
@@ -72,5 +88,5 @@ def watch_price(
             break
 
         except Exception as e:
-            logger.exception("Error in price watcher loop")
+            logger.error(f"Price fetch failed: {e}")
             time.sleep(poll_interval)
