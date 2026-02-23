@@ -1,6 +1,7 @@
 # Binance Futures Testnet Trading Bot (Assignment)
 
 Python CLI app to place `MARKET` and `LIMIT` orders on Binance Futures Testnet (USDT-M), with input validation, structured modules, logging, and error handling.
+The API layer uses the `python-binance` package.
 
 ## Features
 

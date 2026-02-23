@@ -13,8 +13,8 @@ from bot.logging_config import configure_logging
 from bot.orders import build_order_request, resolve_avg_price
 
 
-def load_dotenv(env_path: Path) -> None:
-    """Load key-value pairs from .env into process environment if missing."""
+def load_dotenv(env_path: Path, *, override: bool = True) -> None:
+    """Load key-value pairs from .env into process environment."""
     if not env_path.exists():
         return
 
@@ -36,7 +36,10 @@ def load_dotenv(env_path: Path) -> None:
         if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
             value = value[1:-1]
 
-        os.environ.setdefault(key, value)
+        if override:
+            os.environ[key] = value
+        else:
+            os.environ.setdefault(key, value)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -91,7 +94,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     logger = configure_logging(args.log_file)
-    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env", override=True)
 
     try:
         order_request = build_order_request(
@@ -126,16 +129,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     if order_request.price is not None:
         print(f"  Price: {order_request.price}")
 
-    client = BinanceFuturesClient(
-        api_key=api_key,
-        api_secret=api_secret,
-        base_url=args.base_url,
-        timeout=args.timeout,
-        recv_window=args.recv_window,
-        logger=logger,
-    )
-
     try:
+        client = BinanceFuturesClient(
+            api_key=api_key,
+            api_secret=api_secret,
+            base_url=args.base_url,
+            timeout=args.timeout,
+            recv_window=args.recv_window,
+            logger=logger,
+        )
         response = client.place_order(params=order_request.to_api_params())
     except BinanceAPIError as exc:
         logger.error(
