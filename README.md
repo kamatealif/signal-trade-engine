@@ -127,3 +127,14 @@ uv run python main.py ... --order-type LIMIT --price 120000 --log-file logs/limi
 - This bot targets Binance USDT-M Futures Testnet only.
 - Quantity/price precision and symbol filters are ultimately enforced by Binance.
 - For `LIMIT` orders, `timeInForce=GTC` is used.
+
+To run use this :
+
+```bash
+python -m bot.cli \
+  --symbol BTCUSDT \
+  --quantity 0.001 \
+  --watch \
+  --buy-below 65000 \
+  --sell-above 67000
+```
