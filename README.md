@@ -1,28 +1,55 @@
 # Binance Futures Testnet Trading Bot
 
-Python CLI app for Binance USDT-M Futures Testnet.  
-It supports placing `MARKET` and `LIMIT` orders and includes a continuous price watch mode.
+A Python CLI bot for Binance USDT-M Futures **Testnet**.  
+It can:
 
-## What This Project Uses
+- Place one-off `MARKET` and `LIMIT` orders
+- Run a continuous watch loop that auto-buys below a threshold and auto-sells above a threshold
+- Log all trading actions to both console and file
+
+## Overview
+
+This project is intentionally lightweight and CLI-first:
+
+- `argparse` handles command input
+- `python-binance` sends authenticated Futures orders
+- `requests` fetches latest price in watch mode
+- `python-dotenv` loads credentials from `.env`
+- `uv` manages dependencies and execution
+
+The bot targets Binance Futures Testnet endpoint:
+
+- API base URL for orders: `https://testnet.binancefuture.com`
+- Price polling endpoint: `/fapi/v1/ticker/price`
+
+## Features
+
+- Direct order execution for `MARKET` and `LIMIT` orders
+- `LIMIT` order placement with `GTC` time-in-force
+- Watch mode strategy loop that polls price every 3 seconds
+- Local position tracking with two states: `None` and `LONG`
+- Auto-buy trigger when `price <= buy_below` and no local position is open
+- Auto-sell trigger when `price >= sell_above` and local position is `LONG`
+- Operational logging to console and `logs/trading_bot.log`
+
+## Repository Layout
+
+- `main.py` - App entrypoint
+- `bot/cli.py` - Argument parsing and mode routing
+- `bot/client.py` - Binance client initialization and order submission
+- `bot/orders.py` - Order payload creation (`MARKET` / `LIMIT`)
+- `bot/validators.py` - Input validation
+- `bot/price_watcher.py` - Price polling loop and threshold logic
+- `bot/logging_config.py` - Console/file logger setup
+- `pyproject.toml` - Project metadata, dependencies, and CLI script
+
+## Requirements
 
 - Python `3.13+`
-- `python-binance` for Futures order API calls
-- `requests` for watch-mode price polling (`/fapi/v1/ticker/price`)
-- `python-dotenv` for loading API credentials from `.env`
-- `uv` for dependency and environment management
+- Binance Futures Testnet API key and secret
+- `uv` installed locally
 
-## Technologies Used
-
-- Python (CLI application)
-- Binance Futures Testnet API (USDT-M)
-- `python-binance` (order placement/auth wrapper)
-- `requests` (price polling in watch mode)
-- `python-dotenv` (environment variable loading)
-- `argparse` (CLI argument parsing)
-- `logging` (file + console logs)
-- `uv` (dependency and virtual environment management)
-
-## Local Setup
+## Setup
 
 1. Install dependencies:
 
@@ -30,7 +57,7 @@ It supports placing `MARKET` and `LIMIT` orders and includes a continuous price 
 uv sync
 ```
 
-2. Create `.env` in project root:
+2. Create `.env` in the project root:
 
 ```bash
 cat > .env <<'EOF'
@@ -39,28 +66,33 @@ BINANCE_API_SECRET=your_testnet_api_secret
 EOF
 ```
 
-## How To Run
-
-Run commands with:
+3. (Optional) Verify CLI entrypoint:
 
 ```bash
-uv run python main.py ...
+uv run trading-bot --help
 ```
 
-### MARKET order
+## Running the Bot
+
+You can run either of these forms:
+
+- `uv run trading-bot ...`
+- `uv run python main.py ...`
+
+### 1. Place a MARKET Order
 
 ```bash
-uv run python main.py \
+uv run trading-bot \
   --symbol BTCUSDT \
   --quantity 0.001 \
   --side BUY \
   --type MARKET
 ```
 
-### LIMIT order
+### 2. Place a LIMIT Order
 
 ```bash
-uv run python main.py \
+uv run trading-bot \
   --symbol BTCUSDT \
   --quantity 0.001 \
   --side SELL \
@@ -68,10 +100,10 @@ uv run python main.py \
   --price 120000
 ```
 
-### Watch mode
+### 3. Start Watch Mode
 
 ```bash
-uv run python main.py \
+uv run trading-bot \
   --symbol BTCUSDT \
   --quantity 0.001 \
   --watch \
@@ -79,34 +111,69 @@ uv run python main.py \
   --sell-above 67000
 ```
 
-Stop watch mode with `Ctrl + C`.
+Stop the loop with `Ctrl + C`.
 
-## CLI Arguments
+## CLI Argument Reference
+
+### Required in all modes
+
+- `--symbol` (example: `BTCUSDT`)
+- `--quantity` (must be `> 0`)
+
+### Required in direct order mode
+
+- `--side`: `BUY` or `SELL`
+- `--type`: `MARKET` or `LIMIT`
+- `--price`: required only when `--type LIMIT`
+
+### Required in watch mode
+
+- `--watch`
+- `--buy-below`
+- `--sell-above`
+
+## Validation and Error Behavior
+
+Input validation currently enforces:
+
+- `symbol` must be alphanumeric
+- `side` must be `BUY` or `SELL`
+- `type` must be `MARKET` or `LIMIT`
+- `quantity` must be positive
+- `LIMIT` orders must include positive `price`
+
+Common runtime failures:
+
+- Missing credentials: `RuntimeError("Missing Binance API credentials")`
+- Network/API errors during watch loop are logged as `Price fetch failed: ...` and retried
+
+## Logging
+
+- Logs are written to console (`StreamHandler`) and `logs/trading_bot.log` (`FileHandler`)
+- Log format:
 
 ```text
---symbol       required (example: BTCUSDT)
---quantity     required, must be > 0
-
---side         required in order mode: BUY or SELL
---type         required in order mode: MARKET or LIMIT
---price        required for LIMIT orders
-
---watch        enable watch mode
---buy-below    required in watch mode
---sell-above   required in watch mode
+timestamp | LEVEL | message
 ```
 
-## What Each Project File Does
+Watch mode logs include:
 
-- `main.py`: app entrypoint, calls CLI runner
-- `bot/cli.py`: parses CLI args, routes to order mode or watch mode
-- `bot/client.py`: initializes Binance Futures client and sends orders
-- `bot/orders.py`: builds order payloads for MARKET/LIMIT
-- `bot/validators.py`: validates symbol, side, type, quantity, and price
-- `bot/price_watcher.py`: polls latest price and triggers BUY/SELL by thresholds
-- `bot/logging_config.py`: sets logging to console and `logs/trading_bot.log`
-- `pyproject.toml`: project metadata and dependencies
+- Current polled price and movement
+- Position state transitions
+- Buy/sell trigger events
+- Full order payload and exchange response
 
-## Logs
+## Important Notes and Limitations
 
-- Log file path: `logs/trading_bot.log`
+- This bot is configured for **Testnet** only.
+- Watch mode keeps position state in memory only.
+- If the process restarts, local position state resets.
+- No reconciliation is performed against existing exchange positions on startup.
+- Symbol precision/step-size filters are not enforced yet.
+- No stop-loss, take-profit, leverage controls, or risk caps are built in.
+
+## Quick Troubleshooting
+
+- `Missing Binance API credentials`: confirm `.env` exists in project root and names match exactly.
+- `Invalid symbol` or argument errors: verify CLI flags and values match the reference above.
+- Orders rejected by Binance: verify symbol exists on Futures Testnet and quantity/price meet exchange rules.
